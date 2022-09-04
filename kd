@@ -11,8 +11,8 @@ printf "  -n=, --namespace=<namespace name>        - name of namespace where kub
 printf "  -s=, --service=<service name>            - name of service of kubernetes dashboard\n"
 printf "       --secret=<secret name>              - name of secret with service account token (Default grep by service name)\n"
 printf "       --secret-namespace=<namespace name> - name of namespace where secret with service account token is placed (Default kube-system)\n"
-printf "  -k, --kill                        - killing the background process named kdsh\n"
-printf "  -h, --help                        - print this help\n\n"
+printf "  -k, --kill                               - killing the background process named kdsh\n"
+printf "  -h, --help                               - print this help\n\n"
 }
 
 for i in "$@"; do
