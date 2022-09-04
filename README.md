@@ -1,4 +1,4 @@
-# Quick opening k8s dashboard via bash
+# Quick opening k8s dashboard via bash (written for mac)
 
 For quickly access to the script just copy it to `/usr/local/bin/` directory.
 
