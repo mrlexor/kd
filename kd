@@ -1,0 +1,81 @@
+#!/bin/bash
+
+help()
+{
+printf "Quick opening k8s dashboard via bash.\n\n"
+printf "Examples:\n"
+printf "  kd -n=kube-system -s=kubernetes-dashboard\n"
+printf "  kd -k\n\n"
+printf "Options:\n"
+printf "  -n=, --namespace=<namespace name>        - name of namespace where kubernetes dashboard is deployed\n"
+printf "  -s=, --service=<service name>            - name of service of kubernetes dashboard\n"
+printf "       --secret=<secret name>              - name of secret with service account token (Default grep by service name)\n"
+printf "       --secret-namespace=<namespace name> - name of namespace where secret with service account token is placed (Default kube-system)\n"
+printf "  -k, --kill                        - killing the background process named kdsh\n"
+printf "  -h, --help                        - print this help\n\n"
+}
+
+for i in "$@"; do
+  case $i in
+    -n=*|--namespace=*)
+      NAMESPACE="${i#*=}"
+      shift
+      ;;
+    -s=*|--service=*)
+      SERVICE="${i#*=}"
+      shift	
+      ;;
+    --secret=*)
+      SECRET_SA="${i#*=}"
+      shift
+      ;;
+    --secret-namespace=*)
+      SECRET_NAMESPACE_SA="${i#*=}"
+      shift
+      ;;
+    -k|--kill)
+      pkill -f kdsh
+      exit 0
+      ;;
+    -h|--help)
+      help
+      exit 0
+      ;;
+    -*|--*)
+      echo "Unknown option $i"
+      exit 1
+      ;;
+    *)
+      ;;
+  esac
+done
+
+if [[ $NAMESPACE == "" ]] && [[ $SERVICE == "" ]]; then
+  help
+  exit 0
+fi
+
+# Finding the secret name of service account
+if [[ $SECRET_SA != "" ]] && [[ $SECRET_NAMESPACE_SA != "" ]]; then
+  SECRET_SA=$(kubectl get secrets -n $SECRET_NAMESPACE_SA | grep $SECRET_SA-token | awk '{print $1}')
+else
+  SECRET_SA=$(kubectl get secrets -n kube-system | grep ${SECRET_SA:-$SERVICE}-token | awk '{print $1}')
+fi
+
+# Getting the service account token
+if [[ $SECRET_SA == "" ]]; then
+  printf "Secret with service account token has not been found by service name.\n"
+  printf "Please specify the additional argument --secret that is name of secret with service account token.\n"
+  printf "Optional you may specify namespace where secret with service account token is placed via --secret-namespace argument.\n"
+  exit 0
+fi
+TOKEN=$(kubectl describe secret $SECRET_SA -n ${SECRET_NAMESPACE_SA:-kube-system} | grep 'token:' | awk '{print $2}')
+
+# Copying token to the buffer
+echo $TOKEN | pbcopy
+
+# Opening the Kubernetes Dashboard in Google Chrome
+open --new -a "Google Chrome" --args --new-page "http://127.0.0.1:8001/api/v1/namespaces/$NAMESPACE/services/https:$SERVICE:/proxy/#/login"
+
+# Starting kubectl proxy in the background
+nohup bash -c 'exec -a kdsh kubectl proxy --address='127.0.0.1' --port=8001' &>/dev/null &
